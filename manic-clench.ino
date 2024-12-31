@@ -151,7 +151,11 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print(buff);
 
-    delay(100);
+    if (random(0, 10) == 0) {
+      tone(speakerPin, NOTE_G3, 100);
+    } else {
+      delay(100);
+    }
   } else {
     if (gamedata.width > 0) {
       // ! first time.
