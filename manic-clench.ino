@@ -12,6 +12,27 @@ static const int ledPin = LED_BUILTIN;
 static const int switchPin = 6;
 static const int speakerPin = 2;
 
+class Joystick {
+  int sensorValueX;
+  int sensorValueY;
+  int middleX;
+  int middleY;
+
+public:
+  void calibrate() {
+    this->middleX = analogRead(sensorPinX);
+    this->middleY = analogRead(sensorPinY);
+  }
+
+  void poll() {
+    this->sensorValueX = analogRead(sensorPinX) - this->middleX;
+  }
+
+  int getX() {
+    return this->sensorValueX;
+  }
+};
+
 struct GameData {
 
   bool playing;
@@ -23,10 +44,8 @@ struct GameData {
   int hiscore;
 
 private:
-  int sensorValueX;
-  int sensorValueY;
-  int middleX;
-  int middleY;
+
+  Joystick joystick = Joystick();
 
   int player_val;
 
@@ -40,16 +59,11 @@ public:
   }
 
   void pollJoystick() {
-    this->sensorValueX = analogRead(sensorPinX) - this->middleX;
-  }
-
-  void calibrateJoystick() {
-    this->middleX = analogRead(sensorPinX);
-    this->middleY = analogRead(sensorPinY);
+    this->joystick.poll();
   }
 
   void updatePlayerPos() {
-    this->player_val += this->sensorValueX / 3;
+    this->player_val += this->joystick.getX() / 3;
   }
 
   void moveWallAndCheckPlayer() {
@@ -69,6 +83,10 @@ public:
     } else {
       this->score++;
     }
+  }
+
+  void calibrateJoystick() {
+    this->joystick.calibrate();
   }
 };
 
