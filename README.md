@@ -3,6 +3,8 @@
 A simple game for the Elegoo UNO R3 board.
 Stay in the middle of the walls for as long as possible.
 
+![Image of the board](board.jpg "The board")
+
 ## TODO
 
 * Loot crates
