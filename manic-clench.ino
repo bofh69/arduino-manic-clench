@@ -1,25 +1,6 @@
 #include <LiquidCrystal.h>
 #include "pitches.h"
 
-struct GameData {
-  int sensorValueX;
-  int sensorValueY;
-  int middleX;
-  int middleY;
-
-  bool playing;
-
-  int left_wall;
-  int width;
-
-  int player_val;
-  int player_pos;
-
-  int score;
-  int hiscore;
-};
-
-
 // The display also needs some more signals, see the LCD example
 // in Elegoo's documentation.
 static const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 7;
@@ -30,6 +11,66 @@ static const int sensorPinX = A0;
 static const int ledPin = LED_BUILTIN;
 static const int switchPin = 6;
 static const int speakerPin = 2;
+
+struct GameData {
+
+  bool playing;
+
+  int left_wall;
+  int width;
+
+  int score;
+  int hiscore;
+
+private:
+  int sensorValueX;
+  int sensorValueY;
+  int middleX;
+  int middleY;
+
+  int player_val;
+
+public:
+  int getPlayerPos() {
+    return this->player_val / 100;
+  }
+
+  void setPlayerPos(int pos) {
+    this->player_val = pos * 100 + 50;
+  }
+
+  void pollJoystick() {
+    this->sensorValueX = analogRead(sensorPinX) - this->middleX;
+  }
+
+  void calibrateJoystick() {
+    this->middleX = analogRead(sensorPinX);
+    this->middleY = analogRead(sensorPinY);
+  }
+
+  void updatePlayerPos() {
+    this->player_val += this->sensorValueX / 3;
+  }
+
+  void moveWallAndCheckPlayer() {
+    switch (random(0, 3)) {
+      case 0:
+        if (this->left_wall > 0) this->left_wall -= 1;
+        break;
+      case 1:
+        if ((this->left_wall + this->width) < 14) this->left_wall += 1;
+        break;
+    }
+
+    if (this->getPlayerPos() <= this->left_wall) {
+      this->playing = false;
+    } else if (this->getPlayerPos() >= (this->left_wall + this->width)) {
+      this->playing = false;
+    } else {
+      this->score++;
+    }
+  }
+};
 
 static GameData gamedata;
 
@@ -71,10 +112,10 @@ static void initLcd() {
   lcd.print("Hello friend.");
 }
 
-static void calibrateJoystick() {
+static void initJoystick() {
   pinMode(switchPin, INPUT_PULLUP);
-  gamedata.middleX = analogRead(sensorPinX);
-  gamedata.middleY = analogRead(sensorPinY);
+
+  gamedata.calibrateJoystick();
 }
 
 static bool switch_get() {
@@ -86,7 +127,7 @@ void setup() {
 
   pinMode(ledPin, OUTPUT);
   initLcd();
-  calibrateJoystick();
+  initJoystick();
 }
 
 void loop() {
@@ -94,27 +135,9 @@ void loop() {
 
   if (gamedata.playing) {
 
-    gamedata.sensorValueX = analogRead(sensorPinX) - gamedata.middleX;
-
-    switch (random(0, 3)) {
-      case 0:
-        if (gamedata.left_wall > 0) gamedata.left_wall -= 1;
-        break;
-      case 1:
-        if ((gamedata.left_wall + gamedata.width) < 14) gamedata.left_wall += 1;
-        break;
-    }
-
-    gamedata.player_val += gamedata.sensorValueX / 3;
-    gamedata.player_pos = gamedata.player_val / 100;
-
-    if (gamedata.player_pos <= gamedata.left_wall) {
-      gamedata.playing = false;
-    } else if (gamedata.player_pos >= (gamedata.left_wall + gamedata.width)) {
-      gamedata.playing = false;
-    } else {
-      gamedata.score++;
-    }
+    gamedata.pollJoystick();
+    gamedata.updatePlayerPos();
+    gamedata.moveWallAndCheckPlayer();
 
     lcd.setCursor(0, 0);
     sprintf(buff, "Score: %-9d", gamedata.score);
@@ -122,7 +145,7 @@ void loop() {
 
     memset(buff, ' ', 15);
     buff[gamedata.left_wall] = '|';
-    buff[gamedata.player_pos] = 'V';
+    buff[gamedata.getPlayerPos()] = 'V';
     buff[gamedata.left_wall + gamedata.width] = '|';
     buff[15] = 0;
     lcd.setCursor(0, 1);
@@ -132,7 +155,7 @@ void loop() {
   } else {
     if (gamedata.width > 0) {
       // ! first time.
-      lcd.setCursor(gamedata.player_pos, 1);
+      lcd.setCursor(gamedata.getPlayerPos(), 1);
       lcd.print('*');
 
       if (gamedata.score > gamedata.hiscore) {
@@ -153,8 +176,7 @@ void loop() {
 
     gamedata.left_wall = 3;
     gamedata.width = 7;
-    gamedata.player_pos = gamedata.left_wall + gamedata.width / 2;
-    gamedata.player_val = gamedata.player_pos * 100;
+    gamedata.setPlayerPos(gamedata.left_wall + gamedata.width / 2);
     gamedata.score = 0;
     gamedata.playing = true;
     lcd.clear();
